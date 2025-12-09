@@ -72,7 +72,8 @@
         <!-- Header / Distance -->
         <div class="bg-gray-900 p-4 border-b-4 border-gray-700 text-center">
             <h1 class="text-xl font-bold text-yellow-400 mb-2">FRANK TING</h1>
-            <div class="bg-black p-2 rounded border border-gray-600 font-mono text-green-400 text-2xl">
+            <!-- 修改：距离显示字体为白色 (text-white) -->
+            <div class="bg-black p-2 rounded border border-gray-600 font-mono text-white text-2xl">
                 <span id="distance-display">0</span> km
             </div>
             <div class="text-xs text-gray-400 mt-1">目标: 50,000 km</div>
@@ -81,23 +82,27 @@
         <!-- Visual Scene -->
         <div class="relative h-64 bg-sky-300 overflow-hidden flex items-center justify-center group">
             <!-- Background Clouds -->
-            <div id="bg-sky" class="absolute inset-0 bg-cover bg-center transition-all duration-1000" style="background-image: url('https://img.freepik.com/free-vector/blue-sky-with-clouds-background_1017-26303.jpg'); opacity: 0.8;"></div>
+            <!-- 修复：去掉了 transition-all duration-1000，防止与 JS 动画冲突；去掉了 bg-cover 改为 background-size: auto 100% 以便更好地平铺 -->
+            <div id="bg-sky" class="absolute inset-0 transition-opacity duration-200" style="background-image: url('https://img.freepik.com/free-vector/blue-sky-with-clouds-background_1017-26303.jpg'); opacity: 0.8; background-repeat: repeat-x; background-size: auto 100%;"></div>
             
             <!-- Frank's Avatar -->
-            <div class="relative z-10 w-40 h-40">
-                <div id="frank-wrapper" class="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden relative bg-gray-500 plane-anim">
+            <div class="relative z-10 w-40 h-40 group cursor-pointer" onclick="document.getElementById('img-upload').click()">
+                <div id="frank-wrapper" class="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden relative bg-gray-500 plane-anim group-hover:border-yellow-400 transition-colors">
                     <!-- 使用用户上传的图片 -->
-                    <img id="frank-img" src="frank.jpg" alt="Frank Ting" class="w-full h-full object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Frank'">
+                    <img id="frank-img" src="frank.jpg" alt="Frank Ting" class="w-full h-full object-cover" onerror="handleImgError(this)">
                     
-                    <!-- Status Overlays -->
-                    <div id="overlay-status" class="absolute inset-0 bg-black bg-opacity-0 flex items-center justify-center text-4xl transition-all">
-                        <!-- Emojis injected via JS -->
+                    <!-- Upload Hint Overlay -->
+                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-camera text-white text-2xl"></i>
                     </div>
                 </div>
                 <!-- Plane Wings (CSS Art) -->
                 <div class="absolute top-1/2 -left-10 w-16 h-4 bg-gray-300 rotate-12 -z-10 rounded-l border border-gray-600"></div>
                 <div class="absolute top-1/2 -right-10 w-16 h-4 bg-gray-300 -rotate-12 -z-10 rounded-r border border-gray-600"></div>
             </div>
+            
+            <!-- Hidden File Input -->
+            <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="uploadImage(this)">
 
             <!-- Effect Overlays -->
             <div id="effect-flash" class="absolute inset-0 bg-red-500 opacity-0 pointer-events-none transition-opacity duration-200"></div>
@@ -106,31 +111,32 @@
         <!-- Stats Panel -->
         <div class="p-4 space-y-3 bg-gray-800">
             
-            <!-- Stamina (Fuel/Fatigue) -->
+            <!-- Stamina (Fuel/Fatigue) - 改为白色 -->
             <div>
                 <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
                     <span>飞行耐力 (Max: <span id="max-stamina-display">100</span>%)</span>
-                    <i class="fas fa-bolt text-yellow-400"></i>
+                    <i class="fas fa-bolt text-white"></i>
                 </div>
                 <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
-                    <div id="bar-stamina" class="bar-container bg-yellow-400 h-full rounded-full" style="width: 100%"></div>
+                    <div id="bar-stamina" class="bar-container bg-white h-full rounded-full" style="width: 100%"></div>
                 </div>
                 <p class="text-[10px] text-gray-400 mt-0.5">飞太频繁会降低上限!</p>
             </div>
 
-            <!-- Mental Health -->
+            <!-- Mental Health - 修改为黄色 -->
             <div>
                 <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
                     <span>心理健康 (Sanity)</span>
-                    <i class="fas fa-brain text-purple-400"></i>
+                    <i class="fas fa-brain text-yellow-400"></i>
                 </div>
                 <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
-                    <div id="bar-mental" class="bar-container bg-purple-500 h-full rounded-full" style="width: 100%"></div>
+                    <div id="bar-mental" class="bar-container bg-yellow-400 h-full rounded-full" style="width: 100%"></div>
                 </div>
                 <p class="text-[10px] text-gray-400 mt-0.5">不飞就会抑郁!</p>
             </div>
 
-            <!-- Physical Health -->
+            <!-- Physical Health - (保持为原来的黄色/或根据之前版本是红色，此处为了不冲突，我将其设为红色，以区分心理健康) -->
+            <!-- 修正：为了避免两个黄色条分不清，我将身体健康改回经典的红色，心理健康使用你要求的黄色 -->
             <div>
                 <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
                     <span>身体健康 (Health)</span>
@@ -155,15 +161,17 @@
                 <span class="text-xs">起飞!</span>
             </button>
 
+            <!-- 修改：按钮改为“伟哥” -->
             <button id="btn-pill" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-2 rounded border-b-4 border-indigo-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center">
                 <i class="fas fa-capsules mb-1"></i>
-                <span class="text-xs">蓝色药丸</span>
+                <span class="text-xs">伟哥</span>
             </button>
         </div>
 
         <!-- Message Log -->
         <div id="message-log" class="bg-black text-green-400 font-mono text-xs p-2 h-16 overflow-y-auto border-t border-gray-700">
             > 系统启动...<br>
+            > 提示: 如果没看到本人照片，请把 frank.jpg 放在同一文件夹，或者直接点击头像上传。<br>
             > 欢迎回来, Frank Ting机长.
         </div>
 
@@ -187,14 +195,20 @@
             distance: 0,
             goal: 50000,
             
-            stamina: 100,
-            maxStamina: 100, // This decreases with frequency
+            // 核心数值
+            stamina: 100,      // 当前体力
+            maxStamina: 100,   // 当前（可能是药效后的）最大体力上限
+            
+            // 新增：真实的身体上限（用于记录磨损）
+            realMaxStamina: 100, 
+            isBoosted: false,  // 是否吃了伟哥
             
             mental: 100, // Sanity
             health: 100, // Physical
             
             isFlying: false,
             speed: 100,
+            bgOffset: 0, 
             
             timer: null,
             gameOver: false
@@ -209,7 +223,7 @@
             barHealth: document.getElementById('bar-health'),
             log: document.getElementById('message-log'),
             frank: document.getElementById('frank-wrapper'),
-            overlay: document.getElementById('overlay-status'),
+            // Removed overlay element reference
             flash: document.getElementById('effect-flash'),
             bg: document.getElementById('bg-sky'),
             
@@ -238,6 +252,25 @@
             }, 100);
         }
 
+        // Image Handling
+        function handleImgError(img) {
+            // Fallback if local file not found
+            img.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Frank';
+            img.onerror = null; // Prevent infinite loop
+            log("未检测到本地 frank.jpg，已使用替身。(点击头像可手动上传)");
+        }
+
+        function uploadImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('frank-img').src = e.target.result;
+                    log("头像更新成功！Frank 看起来很精神。");
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         // Game Loop (Runs every 100ms)
         function gameLoop() {
             if (state.gameOver) return;
@@ -260,8 +293,13 @@
                 }
 
                 els.frank.classList.add('shake');
-                els.overlay.innerHTML = '😎'; // Cool face
-                els.bg.style.backgroundPosition = `${Date.now() / 10}px 0`; // Move clouds
+                // Removed emoji update
+                
+                // 修复：使用累加的偏移量来实现平滑滚动，而不是使用 Date.now()
+                // 向左移动背景 (减小 x 值) 模拟向前飞行
+                // 修改：进一步加速背景移动 (原为 speed / 1.5，现改为 speed * 5 约等于10倍增速)
+                state.bgOffset -= (state.speed * 5); 
+                els.bg.style.backgroundPosition = `${state.bgOffset}px 0`;
 
                 // Check if stamina runs out
                 if (state.stamina <= 0) {
@@ -283,9 +321,7 @@
                 // Decay Mental Health (Depression kicks in)
                 state.mental -= 0.3;
                 
-                if (state.mental < 50) els.overlay.innerHTML = '😟';
-                if (state.mental < 30) els.overlay.innerHTML = '😭';
-                if (state.mental < 10) els.overlay.innerHTML = '👿'; // Turning evil
+                // Removed emoji updates for mental health
             }
 
             // 2. Win/Loss Checks
@@ -309,9 +345,12 @@
             }
             
             // Lose: Can't fly anymore (Max Stamina too low to take off safely, e.g., < 20)
-            if (state.maxStamina < 20 && !state.isFlying) {
-                endGame('grounded');
-                return;
+            if (state.realMaxStamina < 20 && !state.isFlying) {
+                // 注意：这里检查的是 realMaxStamina，因为药效过后才会发现飞不起来
+                if (!state.isBoosted) {
+                    endGame('grounded');
+                    return;
+                }
             }
 
             updateUI();
@@ -319,11 +358,16 @@
 
         function updateUI() {
             els.dist.textContent = Math.floor(state.distance).toLocaleString();
+            
+            // 显示当前生效的 Max Stamina
             els.maxStam.textContent = Math.floor(state.maxStamina);
             
-            els.barStam.style.width = `${Math.max(0, (state.stamina / 100) * 100)}%`;
-            // Stamina turns red if low
-            els.barStam.className = `bar-container h-full rounded-full ${state.stamina < 20 ? 'bg-red-500 animate-pulse' : 'bg-yellow-400'}`;
+            // 进度条百分比
+            els.barStam.style.width = `${Math.max(0, (state.stamina / state.maxStamina) * 100)}%`;
+            
+            // Stamina turns red if low, otherwise WHITE
+            // 如果吃了药，进度条变成紫色或者特别的颜色？这里保持白色，但如果低了还是红
+            els.barStam.className = `bar-container h-full rounded-full ${state.stamina < 20 ? 'bg-red-500 animate-pulse' : 'bg-white'}`;
             
             els.barMental.style.width = `${Math.max(0, state.mental)}%`;
             els.barHealth.style.width = `${Math.max(0, state.health)}%`;
@@ -356,14 +400,24 @@
             if (!state.isFlying) return;
             state.isFlying = false;
             
-            // Mechanic: "飞行频率过多导致飞行时间降低"
-            // Landing permanently reduces max stamina slightly
+            // 每次降落都会对【真实身体】造成磨损
             let damage = 5; 
-            state.maxStamina -= damage;
+            state.realMaxStamina -= damage;
             
-            log(`降落成功。最大耐力永久降低了 ${damage} 点。`);
+            // 无论是否吃药，真实身体都在变差
+            // 如果吃了药，药效在这里结束，回归真实身体状况
+            if (state.isBoosted) {
+                state.isBoosted = false;
+                // 还原为真实的（已经磨损的）上限
+                state.maxStamina = state.realMaxStamina;
+                log(`降落成功。药效消退，身体感到一阵虚空... (真实上限降至 ${state.realMaxStamina})`);
+            } else {
+                // 如果没吃药，显示上限就是真实上限
+                state.maxStamina = state.realMaxStamina;
+                log(`降落成功。最大耐力永久降低了 ${damage} 点。`);
+            }
             
-            if (state.maxStamina < 20) {
+            if (state.realMaxStamina < 20) {
                 log("警告：身体状况极差，可能无法再次起飞。");
             }
         }
@@ -373,20 +427,21 @@
             
             flashColor('bg-blue-500');
             
-            // Effect: Refill current stamina fully, boost speed temporarily
-            state.stamina = state.maxStamina;
-            state.speed = 200; // Boost speed
+            // 开启药效模式
+            state.isBoosted = true;
+            
+            // 核心修改：体力上限临时变为100，当前体力也直接补满
+            state.maxStamina = 100;
+            state.stamina = 100;
             
             // Cost: Health drops significantly
             state.health -= 25;
             
-            log("吞下了蓝色药丸... 感觉充满了力量！(健康 -25)");
-            els.overlay.innerHTML = '💊';
+            // 修改日志文案
+            log("吞下了伟哥... 感觉充满了力量！(体力临时回满，健康 -25)");
+            // Removed emoji update
 
-            setTimeout(() => {
-                state.speed = 100; // Reset speed after 2 seconds
-                if(!state.gameOver) log("药效过了...");
-            }, 3000);
+            // 这里的药效现在持续到降落为止，不需要定时器重置速度了
         }
 
         // End Game Logic
@@ -408,28 +463,29 @@
                     els.mTitle.textContent = "送医急救";
                     els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-white";
                     els.mImg.textContent = "🚑";
-                    els.mDesc.textContent = "药不能乱吃！Frank 因为服用过量蓝色药丸导致心脏骤停。";
+                    // 修改结局描述
+                    els.mDesc.textContent = "Frank Ting吃药太多，死了";
                     break;
                 case 'crime':
                     // Bad Ending 3: Wanted
                     els.mTitle.textContent = "被通缉";
                     els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-red-600";
                     els.mImg.textContent = "🚓";
-                    els.mDesc.innerHTML = "因为太久没飞，Frank 抑郁成疾，心理扭曲走上了犯罪道路。<br>现在他是头号通缉犯。";
+                    els.mDesc.innerHTML = "由于长时间未成起飞，Frank TIng患上了抑郁症，从此走向了犯罪的道路。<br>所以说，适当的起飞还是很有必要的";
                     break;
                 case 'crash':
                     // Bad Ending 4: Crash
                     els.mTitle.textContent = "坠机悲剧";
                     els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-orange-500";
                     els.mImg.textContent = "💥";
-                    els.mDesc.textContent = "一次意外的引擎故障。这是一个小概率事件，但它发生了。";
+                    els.mDesc.textContent = "man, what can I say? Mamba out!";
                     break;
                 case 'win':
                     // Good Ending
                     els.mTitle.textContent = "环游世界!";
                     els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-green-400";
                     els.mImg.textContent = "🌏";
-                    els.mDesc.textContent = "Frank 成功完成了航程！他战胜了心理和生理的极限，过上了幸福快乐的生活。";
+                    els.mDesc.textContent = "愿所有机长终成正果";
                     break;
             }
         }
