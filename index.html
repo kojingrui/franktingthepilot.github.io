@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传奇机长 Frank Ting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a202c;
+            color: white;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .plane-anim {
+            animation: fly 2s infinite ease-in-out;
+        }
+
+        @keyframes fly {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Scanline effect */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            position: fixed;
+            pointer-events: none;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10;
+        }
+
+        .bar-container {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="scanlines"></div>
+
+    <!-- Main Game Container -->
+    <div id="game-container" class="w-full max-w-md bg-gray-800 rounded-xl border-4 border-gray-600 shadow-2xl overflow-hidden relative">
+        
+        <!-- Header / Distance -->
+        <div class="bg-gray-900 p-4 border-b-4 border-gray-700 text-center">
+            <h1 class="text-xl font-bold text-yellow-400 mb-2">FRANK TING</h1>
+            <div class="bg-black p-2 rounded border border-gray-600 font-mono text-green-400 text-2xl">
+                <span id="distance-display">0</span> km
+            </div>
+            <div class="text-xs text-gray-400 mt-1">目标: 50,000 km</div>
+        </div>
+
+        <!-- Visual Scene -->
+        <div class="relative h-64 bg-sky-300 overflow-hidden flex items-center justify-center group">
+            <!-- Background Clouds -->
+            <div id="bg-sky" class="absolute inset-0 bg-cover bg-center transition-all duration-1000" style="background-image: url('https://img.freepik.com/free-vector/blue-sky-with-clouds-background_1017-26303.jpg'); opacity: 0.8;"></div>
+            
+            <!-- Frank's Avatar -->
+            <div class="relative z-10 w-40 h-40">
+                <div id="frank-wrapper" class="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden relative bg-gray-500 plane-anim">
+                    <!-- 使用用户上传的图片 -->
+                    <img id="frank-img" src="frank.jpg" alt="Frank Ting" class="w-full h-full object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Frank'">
+                    
+                    <!-- Status Overlays -->
+                    <div id="overlay-status" class="absolute inset-0 bg-black bg-opacity-0 flex items-center justify-center text-4xl transition-all">
+                        <!-- Emojis injected via JS -->
+                    </div>
+                </div>
+                <!-- Plane Wings (CSS Art) -->
+                <div class="absolute top-1/2 -left-10 w-16 h-4 bg-gray-300 rotate-12 -z-10 rounded-l border border-gray-600"></div>
+                <div class="absolute top-1/2 -right-10 w-16 h-4 bg-gray-300 -rotate-12 -z-10 rounded-r border border-gray-600"></div>
+            </div>
+
+            <!-- Effect Overlays -->
+            <div id="effect-flash" class="absolute inset-0 bg-red-500 opacity-0 pointer-events-none transition-opacity duration-200"></div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div class="p-4 space-y-3 bg-gray-800">
+            
+            <!-- Stamina (Fuel/Fatigue) -->
+            <div>
+                <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
+                    <span>飞行耐力 (Max: <span id="max-stamina-display">100</span>%)</span>
+                    <i class="fas fa-bolt text-yellow-400"></i>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
+                    <div id="bar-stamina" class="bar-container bg-yellow-400 h-full rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-0.5">飞太频繁会降低上限!</p>
+            </div>
+
+            <!-- Mental Health -->
+            <div>
+                <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
+                    <span>心理健康 (Sanity)</span>
+                    <i class="fas fa-brain text-purple-400"></i>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
+                    <div id="bar-mental" class="bar-container bg-purple-500 h-full rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-0.5">不飞就会抑郁!</p>
+            </div>
+
+            <!-- Physical Health -->
+            <div>
+                <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-1">
+                    <span>身体健康 (Health)</span>
+                    <i class="fas fa-heart text-red-500"></i>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
+                    <div id="bar-health" class="bar-container bg-red-500 h-full rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Controls -->
+        <div class="p-4 grid grid-cols-3 gap-2 bg-gray-900 border-t border-gray-700">
+            <button id="btn-rest" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-2 rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center">
+                <i class="fas fa-bed mb-1"></i>
+                <span class="text-xs">休息/停机</span>
+            </button>
+
+            <button id="btn-fly" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-2 rounded border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center">
+                <i class="fas fa-plane-departure mb-1"></i>
+                <span class="text-xs">起飞!</span>
+            </button>
+
+            <button id="btn-pill" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-2 rounded border-b-4 border-indigo-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center">
+                <i class="fas fa-capsules mb-1"></i>
+                <span class="text-xs">蓝色药丸</span>
+            </button>
+        </div>
+
+        <!-- Message Log -->
+        <div id="message-log" class="bg-black text-green-400 font-mono text-xs p-2 h-16 overflow-y-auto border-t border-gray-700">
+            > 系统启动...<br>
+            > 欢迎回来, Frank Ting机长.
+        </div>
+
+    </div>
+
+    <!-- Ending Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 border-4 border-white p-6 rounded-lg text-center max-w-sm w-full">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4 pixel-font text-red-500">GAME OVER</h2>
+            <div id="modal-img" class="text-6xl mb-4">💀</div>
+            <p id="modal-desc" class="text-gray-300 mb-6 font-mono text-sm">结局描述在这里。</p>
+            <button onclick="location.reload()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded pixel-font animate-pulse">
+                再飞一次
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const state = {
+            distance: 0,
+            goal: 50000,
+            
+            stamina: 100,
+            maxStamina: 100, // This decreases with frequency
+            
+            mental: 100, // Sanity
+            health: 100, // Physical
+            
+            isFlying: false,
+            speed: 100,
+            
+            timer: null,
+            gameOver: false
+        };
+
+        // DOM Elements
+        const els = {
+            dist: document.getElementById('distance-display'),
+            maxStam: document.getElementById('max-stamina-display'),
+            barStam: document.getElementById('bar-stamina'),
+            barMental: document.getElementById('bar-mental'),
+            barHealth: document.getElementById('bar-health'),
+            log: document.getElementById('message-log'),
+            frank: document.getElementById('frank-wrapper'),
+            overlay: document.getElementById('overlay-status'),
+            flash: document.getElementById('effect-flash'),
+            bg: document.getElementById('bg-sky'),
+            
+            btnFly: document.getElementById('btn-fly'),
+            btnRest: document.getElementById('btn-rest'),
+            btnPill: document.getElementById('btn-pill'),
+            
+            modal: document.getElementById('modal'),
+            mTitle: document.getElementById('modal-title'),
+            mDesc: document.getElementById('modal-desc'),
+            mImg: document.getElementById('modal-img')
+        };
+
+        // Helper: Log Message
+        function log(msg) {
+            els.log.innerHTML += `> ${msg}<br>`;
+            els.log.scrollTop = els.log.scrollHeight;
+        }
+
+        // Helper: Flash Screen
+        function flashColor(colorClass) {
+            els.flash.className = `absolute inset-0 ${colorClass} opacity-50 pointer-events-none transition-opacity duration-200`;
+            setTimeout(() => {
+                els.flash.classList.remove('opacity-50');
+                els.flash.classList.add('opacity-0');
+            }, 100);
+        }
+
+        // Game Loop (Runs every 100ms)
+        function gameLoop() {
+            if (state.gameOver) return;
+
+            // 1. Logic if Flying
+            if (state.isFlying) {
+                // Increase Distance
+                state.distance += (state.speed / 10); // Speed factor
+                
+                // Drain Stamina
+                state.stamina -= 0.8; 
+
+                // Improve Mental Health slightly (doing what he loves)
+                if (state.mental < 100) state.mental += 0.2;
+
+                // Random Crash Chance (0.1% per tick)
+                if (Math.random() < 0.001) {
+                    endGame('crash');
+                    return;
+                }
+
+                els.frank.classList.add('shake');
+                els.overlay.innerHTML = '😎'; // Cool face
+                els.bg.style.backgroundPosition = `${Date.now() / 10}px 0`; // Move clouds
+
+                // Check if stamina runs out
+                if (state.stamina <= 0) {
+                    log("燃油耗尽! 紧急迫降!");
+                    stopFlying();
+                }
+
+            } else {
+                // Logic if Resting/Grounded
+                els.frank.classList.remove('shake');
+                
+                // Regenerate Stamina
+                if (state.stamina < state.maxStamina) {
+                    state.stamina += 0.5;
+                } else {
+                    state.stamina = state.maxStamina; // Cap it
+                }
+
+                // Decay Mental Health (Depression kicks in)
+                state.mental -= 0.3;
+                
+                if (state.mental < 50) els.overlay.innerHTML = '😟';
+                if (state.mental < 30) els.overlay.innerHTML = '😭';
+                if (state.mental < 10) els.overlay.innerHTML = '👿'; // Turning evil
+            }
+
+            // 2. Win/Loss Checks
+            
+            // Win
+            if (state.distance >= state.goal) {
+                endGame('win');
+                return;
+            }
+
+            // Lose: Depression/Crime
+            if (state.mental <= 0) {
+                endGame('crime');
+                return;
+            }
+
+            // Lose: Physical Health
+            if (state.health <= 0) {
+                endGame('hospital');
+                return;
+            }
+            
+            // Lose: Can't fly anymore (Max Stamina too low to take off safely, e.g., < 20)
+            if (state.maxStamina < 20 && !state.isFlying) {
+                endGame('grounded');
+                return;
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            els.dist.textContent = Math.floor(state.distance).toLocaleString();
+            els.maxStam.textContent = Math.floor(state.maxStamina);
+            
+            els.barStam.style.width = `${Math.max(0, (state.stamina / 100) * 100)}%`;
+            // Stamina turns red if low
+            els.barStam.className = `bar-container h-full rounded-full ${state.stamina < 20 ? 'bg-red-500 animate-pulse' : 'bg-yellow-400'}`;
+            
+            els.barMental.style.width = `${Math.max(0, state.mental)}%`;
+            els.barHealth.style.width = `${Math.max(0, state.health)}%`;
+
+            // Button states
+            els.btnFly.disabled = state.isFlying;
+            els.btnFly.className = state.isFlying ? "opacity-50 cursor-not-allowed bg-gray-600 text-white font-bold py-3 px-2 rounded flex flex-col items-center" : "bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-2 rounded border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center";
+            
+            els.btnRest.disabled = !state.isFlying;
+            els.btnRest.className = !state.isFlying ? "opacity-50 cursor-not-allowed bg-gray-600 text-white font-bold py-3 px-2 rounded flex flex-col items-center" : "bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-2 rounded border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center";
+        }
+
+        // Actions
+        function startFlying() {
+            if (state.stamina < 10) {
+                log("耐力不足，无法起飞！先休息！");
+                flashColor('bg-red-500');
+                return;
+            }
+            if (state.maxStamina < 20) {
+                log("机体/身体已达极限，无法再飞了...");
+                return;
+            }
+            
+            state.isFlying = true;
+            log("Frank 机长起飞了!");
+        }
+
+        function stopFlying() {
+            if (!state.isFlying) return;
+            state.isFlying = false;
+            
+            // Mechanic: "飞行频率过多导致飞行时间降低"
+            // Landing permanently reduces max stamina slightly
+            let damage = 5; 
+            state.maxStamina -= damage;
+            
+            log(`降落成功。最大耐力永久降低了 ${damage} 点。`);
+            
+            if (state.maxStamina < 20) {
+                log("警告：身体状况极差，可能无法再次起飞。");
+            }
+        }
+
+        function takePill() {
+            if (state.health <= 0) return;
+            
+            flashColor('bg-blue-500');
+            
+            // Effect: Refill current stamina fully, boost speed temporarily
+            state.stamina = state.maxStamina;
+            state.speed = 200; // Boost speed
+            
+            // Cost: Health drops significantly
+            state.health -= 25;
+            
+            log("吞下了蓝色药丸... 感觉充满了力量！(健康 -25)");
+            els.overlay.innerHTML = '💊';
+
+            setTimeout(() => {
+                state.speed = 100; // Reset speed after 2 seconds
+                if(!state.gameOver) log("药效过了...");
+            }, 3000);
+        }
+
+        // End Game Logic
+        function endGame(reason) {
+            state.gameOver = true;
+            clearInterval(state.timer);
+            els.modal.classList.remove('hidden');
+
+            switch(reason) {
+                case 'grounded':
+                    // Bad Ending 1: Stuck
+                    els.mTitle.textContent = "终身禁飞";
+                    els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-gray-500";
+                    els.mImg.textContent = "🔒";
+                    els.mDesc.textContent = "Frank 飞得太频繁，身体彻底垮了。他再也飞不起来，只能永远留在这个地方。";
+                    break;
+                case 'hospital':
+                    // Bad Ending 2: Overdose
+                    els.mTitle.textContent = "送医急救";
+                    els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-white";
+                    els.mImg.textContent = "🚑";
+                    els.mDesc.textContent = "药不能乱吃！Frank 因为服用过量蓝色药丸导致心脏骤停。";
+                    break;
+                case 'crime':
+                    // Bad Ending 3: Wanted
+                    els.mTitle.textContent = "被通缉";
+                    els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-red-600";
+                    els.mImg.textContent = "🚓";
+                    els.mDesc.innerHTML = "因为太久没飞，Frank 抑郁成疾，心理扭曲走上了犯罪道路。<br>现在他是头号通缉犯。";
+                    break;
+                case 'crash':
+                    // Bad Ending 4: Crash
+                    els.mTitle.textContent = "坠机悲剧";
+                    els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-orange-500";
+                    els.mImg.textContent = "💥";
+                    els.mDesc.textContent = "一次意外的引擎故障。这是一个小概率事件，但它发生了。";
+                    break;
+                case 'win':
+                    // Good Ending
+                    els.mTitle.textContent = "环游世界!";
+                    els.mTitle.className = "text-2xl font-bold mb-4 pixel-font text-green-400";
+                    els.mImg.textContent = "🌏";
+                    els.mDesc.textContent = "Frank 成功完成了航程！他战胜了心理和生理的极限，过上了幸福快乐的生活。";
+                    break;
+            }
+        }
+
+        // Listeners
+        els.btnFly.addEventListener('click', startFlying);
+        els.btnRest.addEventListener('click', stopFlying);
+        els.btnPill.addEventListener('click', takePill);
+
+        // Start
+        state.timer = setInterval(gameLoop, 100); // 10 ticks per second
+
+    </script>
+</body>
+</html>
